@@ -1,22 +1,57 @@
-"use client"
+'use client'
 import { useState } from 'react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { AlertCircle } from "lucide-react"
+import axios from 'axios'
 
 export default function ContentDetectionPage() {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const [youtubeLink, setYoutubeLink] = useState('')
-  const [textFile, setTextFile] = useState<File | null>(null)
+  const [textInput, setTextInput] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Handle form submission logic here
-    console.log({ imageFile, videoFile, youtubeLink, textFile })
+    setLoading(true)
+
+    try {
+      if (youtubeLink) {
+        const response = await axios.post('http://127.0.0.1:5000/download', { video_url: youtubeLink })
+        if (response.status === 200) {
+          window.location.href = '/dashboard'
+        }
+      } else if (imageFile || videoFile) {
+        // Handle file uploads here
+        const formData = new FormData()
+        if (imageFile) formData.append('image', imageFile)
+        if (videoFile) formData.append('video', videoFile)
+
+        const response = await axios.post('http://127.0.0.1:5000/upload', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+        if (response.status === 200) {
+          window.location.href = '/dashboard'
+        }
+      } else if (textInput) {
+        const response = await axios.post('http://127.0.0.1:5000/text', { text: textInput })
+        if (response.status === 200) {
+          window.location.href = '/dashboard'
+        }
+      }
+    } catch (error) {
+      console.error('Error:', error)
+    } finally {
+      setLoading(false)
+    }
   }
+
+  const isButtonDisabled = !imageFile && !videoFile && !youtubeLink && !textInput
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-red-600 text-gray-100">
@@ -71,17 +106,18 @@ export default function ContentDetectionPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="text-upload" className="text-gray-200">Upload Text Document</Label>
+                <Label htmlFor="text-input" className="text-gray-200">Enter Text</Label>
                 <Input
-                  id="text-upload"
-                  type="file"
-                  accept=".txt,.doc,.docx,.pdf"
-                  onChange={(e) => setTextFile(e.target.files?.[0] || null)}
+                  id="text-input"
+                  type="textarea"
+                  placeholder='Enter text here...'
+                  value={textInput}
+                  onChange={(e) => setTextInput(e.target.value)}
                   className="bg-gray-700 text-gray-200 border-gray-600 focus:ring-red-500 focus:border-red-500"
                 />
               </div>
-              <Button type="submit" className="w-full bg-gray-50 hover:bg-red-700 text-black font-bold">
-                Analyze Content
+              <Button type="submit" disabled={isButtonDisabled || loading} className="w-full bg-gray-50 hover:bg-red-700 text-black font-bold">
+                {loading ? 'Loading...' : 'Analyze Content'}
               </Button>
             </form>
           </CardContent>
