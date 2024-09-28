@@ -54,7 +54,7 @@ export default function ContentDetectionPage() {
   const isButtonDisabled = !imageFile && !videoFile && !youtubeLink && !textInput
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-red-600 text-gray-100">
+    <div className=" min-h-screen bg-gradient-to-b from-gray-900 to-red-600 text-gray-100">
       <div className="h-screen flex justify-center items-center relative" >
           <div className='flex justify-between absolute top-0 w-full flex-1'>
           <div className="siren-light left-top"></div>
@@ -116,6 +116,7 @@ export default function ContentDetectionPage() {
                   className="bg-gray-700 text-gray-200 border-gray-600 focus:ring-red-500 focus:border-red-500"
                 />
               </div>
+
               <Button type="submit" disabled={isButtonDisabled || loading} className="w-full bg-gray-50 hover:bg-red-700 text-black font-bold">
                 {loading ? 'Loading...' : 'Analyze Content'}
               </Button>

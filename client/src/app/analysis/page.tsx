@@ -18,14 +18,8 @@ import {
 } from "@/components/ui/chart"
 
 import { PolarAngleAxis, RadialBar, RadialBarChart } from "recharts"
+import PDFDownloadButton from '../pdfDownloader/pdfDownloader';
 
-const barChartData = [
-    { name: 'Hate Speech', value: 65 },
-    { name: 'Extremism', value: 45 },
-    { name: 'Violence', value: 30 },
-    { name: 'Discrimination', value: 50 },
-    { name: 'Misinformation', value: 55 },
-]
 
 const pieChartData = [
     { name: 'Safe', value: 60 },
@@ -35,44 +29,48 @@ const pieChartData = [
 
 const COLORS = ['#10B981', '#FBBF24', '#EF4444']
 
+let score = 72
+let framesProcessed = 30
+const summary = "text that you want to be in the pdf" 
+
 export default function DashboardAnalysis() {
     return (
-        <div className="absolute inset-0 min-h-screen bg-gradient-to-b from-gray-900 to-red-600 text-gray-100 p-8">
+        <div className="relative">
+        <div className="inset-0 min-h-full bg-fixed bg-gradient-to-b from-gray-900   to-red-800 text-gray-100 p-8">
             <div className=" max-w-7xl mx-auto">
                 <h1 className="text-3xl font-bold mb-8">Content Analysis Dashboard</h1>
 
-                <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-                    <Card className="bg-gray-950 border-gray-700">
+                <div className=" grid gap-8 md:grid-cols-2 lg:grid-cols-2 ">
+                    <Card className="bg-gray-950 border-white border-2">
                         <CardHeader>
                             <CardTitle className="text-xl font-semibold text-gray-100">Overall Safety Score</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-5xl font-bold mb-2 text-gray-100">72%</div>
-                            <Progress value={72} className="h-2 mb-2 " />
+                            <div className="text-5xl font-bold mb-2 text-gray-100">{score}</div>
+                            <Progress value={score} className="h-2 mb-2 bg-gray-500" />
                             <p className="text-sm text-gray-400">Moderate risk detected</p>
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-gray-950 border-gray-700">
+                    <Card className="bg-gray-950 border-white border-2">
                         <CardHeader>
                             <CardTitle className="text-xl font-semibold text-gray-100">Analyzed Content</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-5xl font-bold mb-2 text-gray-100">152</div>
+                            <div className="text-5xl font-bold mb-2 text-gray-100">{framesProcessed}</div>
                             <p className="text-sm text-gray-400">Total pieces of content analyzed</p>
                         </CardContent>
                     </Card>
 
                 </div>
 
-                <div className="py-16 flex flex-1 justify-evenly space-x-[5rem]">
+                <div className="py-16 flex flex-1 justify-evenly space-x-[5rem] ">
                     <div className=" flex gap-8 w-1/2">
-                        <Card className="bg-gray-950 border-gray-700 flex-1">
-                            <CardHeader className="space-y-0 pb-0">
-                                <CardDescription>Total number of frames:</CardDescription>
-                                <CardTitle className="flex items-baseline gap-1 text-4xl tabular-nums text-gray-100">
-                                    10
-                                    <span className="font-sans text-sm font-normal tracking-normal text-muted-foreground">frames</span>
+                        <Card className="px-6 shadow-md bg-gray-950 border-white border-2 flex-1  ">
+                            <CardHeader className="space-y-0 pb-0 text-gray-800">
+                                <CardDescription >Total number of frames </CardDescription>
+                                <CardTitle className=" flex items-baseline gap-1 text-m tabular-nums text-gray-100">
+                                    Frames
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="p-0">
@@ -80,24 +78,24 @@ export default function DashboardAnalysis() {
                                     config={{
                                         frames: {
                                             label: "Frames",
-                                            color: "hsl(var(--chart-2))",
+                                            color: "red",
                                         },
                                     }}
                                 >
                                     <AreaChart
-                                        accessibilityLayer
-                                        data={Array.from({ length: 11 }, (_, i) => ({
-                                            date: `2024-01-${i + 1}`,
-                                            frames: i,
-                                        }))}
+                                         accessibilityLayer
+                                         data={Array.from({ length: 11 }, (_, i) => ({
+                                             value: (i / 10),  
+                                             frames: i,     
+                                         }))}
                                         margin={{ left: 0, right: 0, top: 0, bottom: 0 }}
                                     >
-                                        <XAxis dataKey="date" hide />
-                                        <YAxis domain={["dataMin - 5", "dataMax + 2"]} hide />
+                                        <XAxis dataKey="score"  />
+                                        <YAxis domain={["dataMin ", "dataMax "]}  />
                                         <defs>
                                             <linearGradient id="fillFrames" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="var(--color-frames)" stopOpacity={0.8} />
-                                                <stop offset="95%" stopColor="var(--color-frames)" stopOpacity={0.1} />
+                                                <stop offset="5%" stopColor="white" stopOpacity={0.8} />
+                                                <stop offset="95%" stopColor="red" stopOpacity={0.1} />
                                             </linearGradient>
                                         </defs>
                                         <Area
@@ -105,17 +103,17 @@ export default function DashboardAnalysis() {
                                             type="natural"
                                             fill="url(#fillFrames)"
                                             fillOpacity={0.4}
-                                            stroke="var(--color-frames)"
+                                            stroke="white"
                                         />
                                         <ChartTooltip
                                             cursor={false}
                                             content={<ChartTooltipContent hideLabel />}
                                             formatter={(value) => (
-                                                <div className="flex min-w-[120px] items-center text-xs text-muted-foreground">
-                                                    Total number of frames
+                                                <div className="flex min-w-[120px] items-center text-xs text-muted-foreground text-gray-950">
+                                                     Total number of frames 
                                                     <div className="ml-auto flex items-baseline gap-0.5 font-mono font-medium tabular-nums text-foreground">
-                                                        {value}
-                                                        <span className="font-normal text-muted-foreground">frames</span>
+                                                        { value }
+                                                        <span className="font-normal text-muted-foreground"> frames </span>
                                                     </div>
                                                 </div>
                                             )}
@@ -126,7 +124,7 @@ export default function DashboardAnalysis() {
                         </Card>
                     </div>
 
-                    <Card className="bg-gray-950 flex gap-8 w-1/2">
+                    <Card className="bg-gray-950 shadow-md flex gap-8 w-1/2 border-white border-2">
                         <CardContent className="flex gap-4 p-4">
                             <div className="grid items-center gap-2">
                                 <div className="grid flex-1 auto-rows-min gap-0.5">
@@ -220,7 +218,7 @@ export default function DashboardAnalysis() {
                 </div>
 
 
-                <Card className="mt-8 bg-gray-800 border-gray-700">
+                <Card className="mt-8 shadow-lg bg-gray-950 border-white border-2">
                     <CardHeader>
                         <CardTitle className="text-xl font-semibold text-gray-100">Summary Analysis</CardTitle>
                     </CardHeader>
@@ -256,9 +254,10 @@ export default function DashboardAnalysis() {
                 </Card>
 
                 <div className="mt-8 flex justify-end">
-                    <Button className="bg-red-600 hover:bg-red-700 text-white">Generate Full Report</Button>
+                        <PDFDownloadButton text={summary} />
                 </div>
             </div>
         </div >
+        </div>
     )
 }
