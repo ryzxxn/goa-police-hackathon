@@ -19,7 +19,7 @@ export default function ContentDetectionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-red-600 text-gray-100">
+    <div className=" min-h-screen bg-gradient-to-b from-gray-900 to-red-600 text-gray-100">
       <div className="h-screen flex justify-center items-center relative" >
           <div className='flex justify-between absolute top-0 w-full flex-1'>
           <div className="siren-light left-top"></div>
@@ -81,7 +81,7 @@ export default function ContentDetectionPage() {
                 />
               </div>
               <Button type="submit" className="w-full bg-gray-50 hover:bg-red-700 text-black font-bold">
-                Analyze Content
+                Analyse Content
               </Button>
             </form>
           </CardContent>
