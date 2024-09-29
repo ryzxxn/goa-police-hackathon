@@ -432,7 +432,7 @@ async def insert_into_supabase(report_id, created_at, summary, frame_timeline, t
             "score": score,
             "summary": description
         }
-        response = await supabase.table('gp_reports').insert(data).execute()
+        response = supabase.table('gp_reports').insert(data).execute()
         if response.status_code == 201:
             logging.debug("Data inserted into Supabase successfully")
             return True
@@ -519,7 +519,7 @@ def download_video():
             except Exception as e:
                 app.logger.error(f"Error extracting video info: {e}", exc_info=True)
                 return jsonify({'error': 'Failed to extract video info'}), 500
-
+            
             video_uuid = str(uuid.uuid4())
             video_path = os.path.join(video_download_dir, f"{video_uuid}.mp4")
             audio_path = os.path.join(video_download_dir, f"{video_uuid}.wav")
@@ -610,7 +610,8 @@ def download_video():
             'summary': summary,
             'frame_descriptions': frame_responses,
             'type': "video",
-            'score': score
+            'score': score,
+            'vid': video_uuid
         }
 
         frame_timeline = json.dumps(frame_responses)
@@ -621,9 +622,6 @@ def download_video():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         insert_success = loop.run_until_complete(insert_into_supabase(report_id, created_at, summary, frame_timeline, transcription, data_type, score, description))
-
-        if not insert_success:
-            return jsonify({'error': 'Failed to insert data into Supabase'}), 500
 
         return jsonify(response_data), 200
 
@@ -637,6 +635,7 @@ def process_text():
     """
     Endpoint to process text input with an LLM to detect radical content and store the results in ChromaDB.
     """
+    video_uuid = str(uuid.uuid4())
     try:
         data = request.get_json()
         text = data.get('text')
@@ -703,12 +702,23 @@ def process_text():
 
             response_data = {
                 'description': description,
-                'score': score
+                'score': score,
+                'vid': video_uuid
             }
 
             print(response_data)
 
+            # Insert data into Supabase
+            report_id = str(uuid.uuid4())
+            created_at = datetime.utcnow().isoformat()
+            data_type = "text"
+
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            insert_success = loop.run_until_complete(insert_into_supabase(report_id, created_at, description, None, None, data_type, score, description))
+
             return jsonify(response_data), 200
+        
         except json.JSONDecodeError as e:
             app.logger.error(f"JSONDecodeError: {e}")
             return jsonify({'error': 'Invalid JSON response from the model'}), 500
