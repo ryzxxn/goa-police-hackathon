@@ -1,277 +1,131 @@
-"use client"
-import React from 'react'
-import { useParams } from 'next/navigation'
-import { Progress } from "@/components/ui/progress"
-import { Area, AreaChart, XAxis, YAxis } from "recharts"
+"use client";
+import React, { useState, useEffect } from 'react';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { useState, useEffect } from 'react'
+import { useParams } from 'next/navigation';
+import { AreaChart, Area, XAxis, YAxis } from 'recharts';
 
-
-
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card"
-import {
-    ChartContainer,
-    ChartTooltip,
-    ChartTooltipContent,
-} from "@/components/ui/chart"
-
-import { PolarAngleAxis, RadialBar, RadialBarChart } from "recharts"
-import PDFDownloadButton from '../../pdfDownloader/pdfDownloader';
-
-
-export default function page() {
-    const {id} = useParams()
-     useEffect(() => {
-        fetchReportData()
-     },[id])
-
-     const [reportData,setReportData] = useState<any[]>([])
-
-     async function fetchReportData() {
-        
-        let { data, error } = await supabase
-        .from('gp_reports')
-        .select("*")
-
-        // Filters
-        .eq('report_id', id)
-
-        if (data) {
-            setReportData(data)
-        }
-
-     }
-
-     console.log(reportData);
-     
-
-    const supabaseUrl = 'https://dlmwlgnyehclzrryxepq.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsbXdsZ255ZWhjbHpycnl4ZXBxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcyNzQ0OTQ0OCwiZXhwIjoyMDQzMDI1NDQ4fQ.b4plF-vw8ZJ5g-E84LWwUMF5OEzE-NBuG-9sI4sw8BE';
+const supabaseUrl = 'https://dlmwlgnyehclzrryxepq.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsbXdsZ255ZWhjbHpycnl4ZXBxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcyNzQ0OTQ0OCwiZXhwIjoyMDQzMDI1NDQ4fQ.b4plF-vw8ZJ5g-E84LWwUMF5OEzE-NBuG-9sI4sw8BE'; // Ensure to keep your keys secure
 const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey);
 
-const pieChartData = [
-    { name: 'Safe', value: 60 },
-    { name: 'Questionable', value: 25 },
-    { name: 'Dangerous', value: 15 },
-]
+export default function Page() {
+    const { id } = useParams();
+    const [reportData, setReportData] = useState<any[]>([]);
+    const [loading, setLoading] = useState<boolean>(true);
+  
+    useEffect(() => {
+        const fetchReportData = async () => {
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('gp_reports')
+                .select("*")
+                .eq('report_id', id);
+  
+            if (data) {
+                setReportData(data);
+            } else if (error) {
+                console.error("Error fetching report data:", error);
+            }
+            setLoading(false);
+        };
+  
+        fetchReportData();
+    }, [id]);
+  
+    // Handle loading state
+    if (loading) {
+        return <div>Loading...</div>;
+    }
 
-const COLORS = ['#10B981', '#FBBF24', '#EF4444']
+    // Parse frame_timeline
+    const frameTimeline = reportData.length > 0 && reportData[0].frame_timeline ? JSON.parse(reportData[0].frame_timeline) : [];
+    const frameCount = frameTimeline.length;
 
-const score = reportData.length > 0 ? <>{reportData[0].score*10}%</> : null;
-const framesProcessed = reportData.length > 0 && reportData[0].frame_timeline === null? <>asdas</> : null;
-const report_summary = "text that you want to be in the pdf" 
-  return (
-    <div className="relative">
-        <div className="inset-0 min-h-full bg-fixed bg-gradient-to-b from-gray-900   to-red-800 text-gray-100 p-8">
-            <div className=" max-w-7xl mx-auto">
-                <h1 className="text-3xl font-bold mb-8">Content Analysis Dashboard</h1>
+    // Prepare data for chart
+    const chartData = frameTimeline.map((item: any, index: number) => ({
+        frame: index,
+        score: item.score,
+    }));
+  
+    // Calculate score for display
+    const score = reportData.length > 0 && reportData[0].score !== null ? reportData[0].score * 10 : 0;
+  
+    // Determine threat level
+    const threatLevel = score < 40 ? 'Low Risk' : score < 70 ? 'Moderate Risk' : 'High Risk';
+  
+    const handlePrint = () => {
+        window.print();
+    };
 
-                <div className=" grid gap-8 md:grid-cols-2 lg:grid-cols-2 ">
-                    <Card className="bg-gray-950 border-white border-2">
-                        <CardHeader>
-                            <CardTitle className="text-xl font-semibold text-gray-100">Overall Safety Score</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-5xl font-bold mb-2 text-gray-100">{score}</div>
-                            <Progress value = {score} className="h-2 mb-2 bg-gray-500" />
-                            <p className="text-sm text-gray-400">Moderate risk detected</p>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="bg-gray-950 border-white border-2">
-                        <CardHeader>
-                            <CardTitle className="text-xl font-semibold text-gray-100">Analyzed Content</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-5xl font-bold mb-2 text-gray-100">{framesProcessed}</div>
-                            <p className="text-sm text-gray-400">Total pieces of content analyzed</p>
-                        </CardContent>
-                    </Card>
-
-                </div>
-
-                <div className="py-16 flex flex-1 justify-evenly space-x-[5rem] ">
-                    <div className=" flex gap-8 w-1/2">
-                    { reportData.length > 0 && reportData[0].frame_timeline !== null && 
-                       <Card className="px-6 shadow-md bg-gray-950 border-white border-2 flex-1  ">
-                            <CardHeader className="space-y-0 pb-0 text-gray-800">
-                                <CardDescription >Total number of frames </CardDescription>
-                                <CardTitle className=" flex items-baseline gap-1 text-m tabular-nums text-gray-100">
-                                    Frames
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="p-0">
-                                <ChartContainer
-                                    config={{
-                                        frames: {
-                                            label: "Frames",
-                                            color: "red",
-                                        },
-                                    }}
-                                >
-                                    <AreaChart
-                                         accessibilityLayer
-                                         data={Array.from({ length: reportData[0].frame_timeline.length }, (_, i) => ({
-                                             value: (reportData[0].frame_timeline[i].score ),  
-                                             frames: i,     
-                                         }))}
-                                        margin={{ left: 0, right: 0, top: 0, bottom: 0 }}
-                                    >
-                                        <XAxis dataKey="score"  />
-                                        <YAxis domain={["dataMin ", "dataMax "]}  />
-                                        <defs>
-                                            <linearGradient id="fillFrames" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="white" stopOpacity={0.8} />
-                                                <stop offset="95%" stopColor="red" stopOpacity={0.1} />
-                                            </linearGradient>
-                                        </defs>
-                                        <Area
-                                            dataKey="frames"
-                                            type="natural"
-                                            fill="url(#fillFrames)"
-                                            fillOpacity={0.4}
-                                            stroke="white"
-                                        />
-                                        <ChartTooltip
-                                            cursor={false}
-                                            content={<ChartTooltipContent hideLabel />}
-                                            formatter={(value) => (
-                                                <div className="flex min-w-[120px] items-center text-xs text-muted-foreground text-gray-950">
-                                                     Total number of frames 
-                                                    <div className="ml-auto flex items-baseline gap-0.5 font-mono font-medium tabular-nums text-foreground">
-                                                        { value }
-                                                        <span className="font-normal text-muted-foreground"> frames </span>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        />
-                                    </AreaChart>
-                                </ChartContainer>
-                            </CardContent>
-                        </Card> 
-                    }
-                        
-                    </div>
-
-                    <Card className="bg-gray-950 shadow-md flex gap-8 w-1/2 border-white border-2">
-                        <CardContent className="flex gap-4 p-4">
-                            <div className="grid items-center gap-2">
-                                <div className="grid flex-1 auto-rows-min gap-0.5">
-                                    <div className="text-sm text-muted-foreground">Move</div>
-                                    <div className="flex items-baseline gap-1 text-xl font-bold tabular-nums leading-none text-gray-100">
-                                        562/600
-                                        <span className="text-sm font-normal text-muted-foreground text-gray-400">
-                                            kcal
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="grid flex-1 auto-rows-min gap-0.5">
-                                    <div className="text-sm text-muted-foreground">Exercise</div>
-                                    <div className="flex items-baseline gap-1 text-xl font-bold tabular-nums leading-none text-gray-100">
-                                        73/120
-                                        <span className="text-sm font-normal text-muted-foreground text-gray-400">
-                                            min
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="grid flex-1 auto-rows-min gap-0.5">
-                                    <div className="text-sm text-muted-foreground">Stand</div>
-                                    <div className="flex items-baseline gap-1 text-xl font-bold tabular-nums leading-none text-gray-100">
-                                        8/12
-                                        <span className="text-sm font-normal text-muted-foreground text-gray-400">
-                                            hr
-                                        </span>
-                                    </div>
-                                </div>
+    return (
+        <div className="p-4">
+            <button onClick={handlePrint} className="mb-4 px-4 py-2 bg-blue-500 text-white rounded">
+                Print Report
+            </button>
+            {reportData.length > 0 ? (
+                <>
+                    <div>
+                        <div className='flex justify-between'>
+                            <div>
+                                <h1 className="text-xl font-bold">Overall Safety Score</h1>
+                                <div className="text-5xl font-bold mb-2">{score}%</div>
                             </div>
-                            <ChartContainer
-                                config={{
-                                    move: {
-                                        label: "Move",
-                                        color: "hsl(var(--chart-1))",
-                                    },
-                                    exercise: {
-                                        label: "Exercise",
-                                        color: "hsl(var(--chart-2))",
-                                    },
-                                    stand: {
-                                        label: "Stand",
-                                        color: "hsl(var(--chart-3))",
-                                    },
-                                }}
-                                className="mx-auto aspect-square w-full max-w-[80%]"
-                            >
-                                <RadialBarChart
-                                    margin={{
-                                        left: -10,
-                                        right: -10,
-                                        top: -10,
-                                        bottom: -10,
-                                    }}
-                                    data={[
-                                        {
-                                            activity: "stand",
-                                            value: (8 / 12) * 100,
-                                            fill: "var(--color-stand)",
-                                        },
-                                        {
-                                            activity: "exercise",
-                                            value: (46 / 60) * 100,
-                                            fill: "var(--color-exercise)",
-                                        },
-                                        {
-                                            activity: "move",
-                                            value: (245 / 360) * 100,
-                                            fill: "var(--color-move)",
-                                        },
-                                    ]}
-                                    innerRadius="20%"
-                                    barSize={24}
-                                    startAngle={90}
-                                    endAngle={450}
-                                >
-                                    <PolarAngleAxis
-                                        type="number"
-                                        domain={[0, 100]}
-                                        dataKey="value"
-                                        tick={false}
-                                    />
-                                    <RadialBar dataKey="value" background cornerRadius={5} />
-                                </RadialBarChart>
-                            </ChartContainer>
-                        </CardContent>
-                    </Card>
-
-
-
-                </div>
-
-
-                <Card className="mt-8 shadow-lg bg-gray-950 border-white border-2">
-                    <CardHeader>
-                        <CardTitle className="text-xl font-semibold text-gray-100">Summary Analysis</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-gray-300 space-y-4">
-                            <p>
-                                {reportData.length > 0 && reportData[0].summary}
-                            </p>
+                            <div className='text-red-500 font-extrabold text-[3rem]'>
+                                RADWATCH
+                            </div>
                         </div>
-                    </CardContent>
-                </Card>
+  
+                        <div className="relative w-full h-4 bg-black rounded">
+                            <div
+                                className="absolute h-full bg-red-500 rounded"
+                                style={{ width: `${score}%` }}
+                            ></div>
+                        </div>
+                        <p className={`text-sm ${score < 40 ? 'text-green-500' : score < 70 ? 'text-yellow-500' : 'text-red-500'}`}>
+                            {threatLevel} Detected
+                        </p>
+                    </div>
+                    
+                    {reportData[0].type !== "text" && (
+                        <div className="p-4 flex flex-1 w-full">
+                            <div className="flex flex-1 flex-col">
+                                <h2 className="text-xl font-bold">Frame Count</h2>
+                                <p>Total Frames: {frameCount}</p>
+                            </div>
 
-                <div className="mt-8 flex justify-end">
-                        <PDFDownloadButton text={report_summary} />
-                </div>
-            </div>
-        </div >
+                            <div className='flex flex-1 flex-col'>
+                                <h2 className="text-xl font-bold">Frame Analysis</h2>
+                                <AreaChart
+                                    width={600}
+                                    height={300}
+                                    data={chartData}
+                                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                                >
+                                    <XAxis dataKey="frame" />
+                                    <YAxis 
+                                        domain={[0, 'dataMax']}
+                                        ticks={[0,1,2,3,4,5,6,7,8,9,10]} // 10 ticks from 0 to 100
+                                    />
+                                    <Area
+                                        type="monotone"
+                                        dataKey="score"
+                                        stroke="#ff0000"
+                                        fill="#ff0000"
+                                        fillOpacity={0.3}
+                                    />
+                                </AreaChart>
+                            </div>
+                        </div>
+                    )}
+
+                    <div>
+                        <h1 className='font-bold'>Summary</h1>
+                        <p className='font-mono'>{reportData[0].summary}</p>
+                    </div>
+                </>
+            ) : (
+                <div>No report data available.</div>
+            )}
         </div>
-    
-  )
+    );
 }

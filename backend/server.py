@@ -23,6 +23,7 @@ from supabase import create_client, Client
 from datetime import datetime
 import subprocess
 import asyncio
+import easyocr
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -68,6 +69,9 @@ except Exception as e:
 supabase_url = 'https://dlmwlgnyehclzrryxepq.supabase.co'
 supabase_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsbXdsZ255ZWhjbHpycnl4ZXBxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcyNzQ0OTQ0OCwiZXhwIjoyMDQzMDI1NDQ4fQ.b4plF-vw8ZJ5g-E84LWwUMF5OEzE-NBuG-9sI4sw8BE'
 supabase: Client = create_client(supabase_url, supabase_key)
+
+# Initialize EasyOCR
+reader = easyocr.Reader(['en'])
 
 # FUNCTIONS
 
@@ -271,7 +275,6 @@ def score_text(text):
         app.logger.error(f"Error in score_text: {e}", exc_info=True)
         return None
 
-
 def filter_similar_frames_histogram(video_frames_dir, window_size=3, threshold=0.95):
     """
     Filters out similar frames based on histogram comparison using a sliding window approach.
@@ -443,7 +446,6 @@ async def insert_into_supabase(report_id, created_at, summary, frame_timeline, t
         app.logger.error(f"Error inserting data into Supabase: {e}", exc_info=True)
         return False
 
-
 def store_radical_data(video_uuid, description, score):
     """
     Stores radical data in ChromaDB with embeddings.
@@ -519,7 +521,7 @@ def download_video():
             except Exception as e:
                 app.logger.error(f"Error extracting video info: {e}", exc_info=True)
                 return jsonify({'error': 'Failed to extract video info'}), 500
-            
+
             video_uuid = str(uuid.uuid4())
             video_path = os.path.join(video_download_dir, f"{video_uuid}.mp4")
             audio_path = os.path.join(video_download_dir, f"{video_uuid}.wav")
@@ -629,7 +631,6 @@ def download_video():
         app.logger.error(f"Error in /download: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
-
 @app.route('/text', methods=['POST'])
 def process_text():
     """
@@ -718,13 +719,225 @@ def process_text():
             insert_success = loop.run_until_complete(insert_into_supabase(report_id, created_at, description, None, None, data_type, score, description))
 
             return jsonify(response_data), 200
-        
+
         except json.JSONDecodeError as e:
             app.logger.error(f"JSONDecodeError: {e}")
             return jsonify({'error': 'Invalid JSON response from the model'}), 500
 
     except Exception as e:
         app.logger.error(f"Error in /text: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/image', methods=['POST'])
+def process_image():
+    """
+    Endpoint to process an image, extract text using EasyOCR, process the image with LLava,
+    combine both data, score for radical content, and save to the database.
+    """
+    video_uuid = str(uuid.uuid4())
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
+
+        if file:
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(buffer_dir, filename)
+            file.save(file_path)
+
+            # Extract text using EasyOCR
+            result = reader.readtext(file_path)
+            extracted_text = " ".join([text for (_, text, _) in result])
+            app.logger.debug(f"Extracted text from image: {extracted_text}")
+
+            # Process the image with LLava
+            with open(file_path, 'rb') as image_file:
+                image_data = image_file.read()
+                image_base64 = base64.b64encode(image_data).decode('utf-8')
+                prompt = """
+                Please provide a JSON response with the following structure:
+                {
+                    "description": "What is in this picture?",
+                    "score": "On a scale of 1-10, rate if the contents of the image are radical or extremist in nature. Check for symbols, flags, banners, or any visual elements associated with extremist groups, radical ideologies, or extremist religious preaching. Be very strict with the score as I want to protect people from such content."
+                }
+                Example:
+                {
+                    "description": "A flag with a symbol commonly associated with an extremist group.",
+                    "score": 10
+                }
+                """
+                response = ollama.generate(
+                    model='llava',
+                    prompt=prompt,
+                    stream=False,
+                    images=[image_base64],
+                    format='json'
+                )
+                if response:
+                    response_data = json.loads(response.get('response'))
+                    description = response_data.get('description')
+                    score = response_data.get('score')
+
+                    # Combine text data and image data
+                    combined_text = f"{extracted_text} {description}"
+                    combined_score = max(score, score_text(extracted_text).get('score', 0))
+
+                    # Store data in ChromaDB
+                    embedding = embeddings.embed_query(combined_text)
+                    metadata = {"description": combined_text, "score": combined_score}
+                    vectorstore.add_texts(
+                        texts=[combined_text],
+                        embeddings=[embedding],
+                        metadatas=[metadata],
+                        ids=[str(uuid.uuid4())]
+                    )
+                    logging.debug("Stored image data in ChromaDB")
+
+                    if combined_score > 5:
+                        store_radical_data(video_uuid, combined_text, combined_score)
+
+                    response_data = {
+                        'description': combined_text,
+                        'score': combined_score,
+                        'vid': video_uuid
+                    }
+
+                    # Insert data into Supabase
+                    report_id = str(uuid.uuid4())
+                    created_at = datetime.utcnow().isoformat()
+                    data_type = "image"
+
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    insert_success = loop.run_until_complete(insert_into_supabase(report_id, created_at, combined_text, None, None, data_type, combined_score, combined_text))
+
+                    return jsonify(response_data), 200
+
+                else:
+                    return jsonify({'error': 'No response from the model'}), 500
+
+    except Exception as e:
+        app.logger.error(f"Error in /image: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/upload', methods=['POST'])
+def upload_video():
+    """
+    Endpoint to upload a local video file, extract its audio, transcribe the audio to text,
+    extract frames from the video, process frames, summarize descriptions, and store data in ChromaDB.
+    """
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
+
+        if file:
+            filename = secure_filename(file.filename)
+            video_uuid = str(uuid.uuid4())
+            video_path = os.path.join(video_download_dir, f"{video_uuid}.mp4")
+            audio_path = os.path.join(video_download_dir, f"{video_uuid}.wav")
+            caption_path = os.path.join(video_download_dir, f"{video_uuid}.srt")
+
+            file.save(video_path)
+
+            success = extract_audio(video_path, audio_path)
+            if not success:
+                return jsonify({'error': 'Failed to extract audio'}), 500
+
+            transcription = transcribe_audio_whisper(audio_path)
+            if transcription is None:
+                transcription = ""
+
+            save_transcription(video_uuid, transcription)
+
+            video_frames_dir = os.path.join(frames_dir, video_uuid)
+
+            success = video_to_frames(video_path, video_frames_dir)
+            if not success:
+                return jsonify({'error': 'Failed to extract frames'}), 500
+
+            success = filter_similar_frames_histogram(video_frames_dir)
+            if not success:
+                return jsonify({'error': 'Failed to filter similar frames'}), 500
+
+            frame_responses = process_frames_with_model(video_frames_dir)
+
+            descriptions = [frame['description'] for frame in frame_responses if frame['description']]
+            compiled_descriptions = " ".join(descriptions)
+            app.logger.debug(f"Compiled Descriptions: {compiled_descriptions}")
+
+            # Score the compiled descriptions
+            score_response = score_text(compiled_descriptions)
+            if not score_response:
+                return jsonify({'error': 'Failed to score text'}), 500
+
+            score = score_response.get('score')
+            description = score_response.get('description')
+
+            summary = summarize_with_tiny_llama(compiled_descriptions, video_uuid)
+            app.logger.debug(f"Summary: {summary}")
+
+            store_success = store_transcription(video_uuid, transcription)
+            if not store_success:
+                return jsonify({'error': 'Failed to store transcription'}), 500
+
+            frame_store_success = store_frame_data(video_uuid, frame_responses)
+            if not frame_store_success:
+                return jsonify({'error': 'Failed to store frame data'}), 500
+
+            for frame in frame_responses:
+                if frame['score'] > 5:
+                    store_radical_data(video_uuid, frame['description'], frame['score'])
+
+            for frame_file in os.listdir(video_frames_dir):
+                frame_path = os.path.join(video_frames_dir, frame_file)
+                try:
+                    os.remove(frame_path)
+                    logging.debug(f"Removed frame file: {frame_path}")
+                except FileNotFoundError:
+                    app.logger.warning(f"Frame file not found during removal: {frame_path}")
+                except Exception as e:
+                    app.logger.error(f"Error removing frame file {frame_path}: {e}", exc_info=True)
+
+            for file_path in [video_path, audio_path, caption_path]:
+                if os.path.exists(file_path):
+                    try:
+                        os.remove(file_path)
+                        logging.debug(f"Removed file: {file_path}")
+                    except Exception as e:
+                        app.logger.error(f"Error removing file {file_path}: {e}", exc_info=True)
+                else:
+                    app.logger.warning(f"File not found during removal: {file_path}")
+
+            response_data = {
+                'message': 'Video uploaded, processed, and transcription stored successfully',
+                'transcription': transcription,
+                'summary': summary,
+                'frame_descriptions': frame_responses,
+                'type': "video",
+                'score': score,
+                'vid': video_uuid
+            }
+
+            frame_timeline = json.dumps(frame_responses)
+            report_id = str(uuid.uuid4())
+            created_at = datetime.utcnow().isoformat()
+            data_type = "video"
+
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            insert_success = loop.run_until_complete(insert_into_supabase(report_id, created_at, summary, frame_timeline, transcription, data_type, score, description))
+
+            return jsonify(response_data), 200
+
+    except Exception as e:
+        app.logger.error(f"Error in /upload: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
