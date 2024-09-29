@@ -234,29 +234,7 @@ export default function DashboardAnalysis() {
                     <CardContent>
                         <div className="text-gray-300 space-y-4">
                             <p>
-                                Based on the recent content analysis, we've identified several areas of concern across different media types.
-                                Out of 152 pieces of content analyzed, 23 items have been flagged for further review.
-                            </p>
-                            <p>
-                                The primary issues detected include:
-                            </p>
-                            <ul className="list-disc list-inside space-y-2 pl-4">
-                                <li>Potential hate speech in video content, particularly in political contexts</li>
-                                <li>Extremist symbols appearing in image-based media, such as protest materials</li>
-                                <li>Discriminatory language in text-based forum posts and online discussions</li>
-                                <li>Misinformation spread through social media memes and images</li>
-                                <li>Violent content in some video interviews and reports</li>
-                                <li>Conspiracy theories propagated in blog articles and longer-form text content</li>
-                            </ul>
-                            <p>
-                                The overall safety score of 72% indicates a moderate level of risk. While the majority of content appears
-                                safe, the presence of these flagged items suggests a need for ongoing monitoring and potentially more
-                                stringent content guidelines.
-                            </p>
-                            <p>
-                                It is recommended to conduct a more detailed review of the flagged content, particularly focusing on the
-                                sources and contexts of the most severe violations. This will help in developing more targeted strategies
-                                for content moderation and user education.
+                               {reportData[0].summary}
                             </p>
                         </div>
                     </CardContent>

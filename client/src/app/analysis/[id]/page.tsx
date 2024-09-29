@@ -65,7 +65,7 @@ const COLORS = ['#10B981', '#FBBF24', '#EF4444']
 
 const score = reportData.length > 0 ? <>{reportData[0].score*10}%</> : null;
 const framesProcessed = reportData.length > 0 && reportData[0].frame_timeline === null? <>asdas</> : null;
-const summary = "text that you want to be in the pdf" 
+const report_summary = "text that you want to be in the pdf" 
   return (
     <div className="relative">
         <div className="inset-0 min-h-full bg-fixed bg-gradient-to-b from-gray-900   to-red-800 text-gray-100 p-8">
@@ -260,36 +260,14 @@ const summary = "text that you want to be in the pdf"
                     <CardContent>
                         <div className="text-gray-300 space-y-4">
                             <p>
-                                Based on the recent content analysis, we've identified several areas of concern across different media types.
-                                Out of 152 pieces of content analyzed, 23 items have been flagged for further review.
-                            </p>
-                            <p>
-                                The primary issues detected include:
-                            </p>
-                            <ul className="list-disc list-inside space-y-2 pl-4">
-                                <li>Potential hate speech in video content, particularly in political contexts</li>
-                                <li>Extremist symbols appearing in image-based media, such as protest materials</li>
-                                <li>Discriminatory language in text-based forum posts and online discussions</li>
-                                <li>Misinformation spread through social media memes and images</li>
-                                <li>Violent content in some video interviews and reports</li>
-                                <li>Conspiracy theories propagated in blog articles and longer-form text content</li>
-                            </ul>
-                            <p>
-                                The overall safety score of 72% indicates a moderate level of risk. While the majority of content appears
-                                safe, the presence of these flagged items suggests a need for ongoing monitoring and potentially more
-                                stringent content guidelines.
-                            </p>
-                            <p>
-                                It is recommended to conduct a more detailed review of the flagged content, particularly focusing on the
-                                sources and contexts of the most severe violations. This will help in developing more targeted strategies
-                                for content moderation and user education.
+                                {reportData.length > 0 && reportData[0].summary}
                             </p>
                         </div>
                     </CardContent>
                 </Card>
 
                 <div className="mt-8 flex justify-end">
-                        <PDFDownloadButton text={summary} />
+                        <PDFDownloadButton text={report_summary} />
                 </div>
             </div>
         </div >
