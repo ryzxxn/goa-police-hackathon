@@ -22,7 +22,7 @@ export default function ContentDetectionPage() {
       if (youtubeLink) {
         const response = await axios.post('http://127.0.0.1:5000/download', { video_url: youtubeLink })
         if (response.status === 200) {
-          window.location.href = '/dashboard'
+          window.location.href = '/analysis'
         }
       } else if (imageFile || videoFile) {
         // Handle file uploads here
@@ -36,12 +36,12 @@ export default function ContentDetectionPage() {
           }
         })
         if (response.status === 200) {
-          window.location.href = '/dashboard'
+          window.location.href = '/analysis/'
         }
       } else if (textInput) {
         const response = await axios.post('http://127.0.0.1:5000/text', { text: textInput })
         if (response.status === 200) {
-          window.location.href = '/dashboard'
+          window.location.href = `/analysis/${response.data.vid}`
         }
       }
     } catch (error) {
