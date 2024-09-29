@@ -1,8 +1,12 @@
 "use client"
-
+import React from 'react'
+import { useParams } from 'next/navigation'
 import { Progress } from "@/components/ui/progress"
 import { Area, AreaChart, XAxis, YAxis } from "recharts"
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { useState, useEffect } from 'react'
+
+
 
 import {
     Card,
@@ -18,18 +22,39 @@ import {
 } from "@/components/ui/chart"
 
 import { PolarAngleAxis, RadialBar, RadialBarChart } from "recharts"
-import PDFDownloadButton from '../pdfDownloader/pdfDownloader';
+import PDFDownloadButton from '../../pdfDownloader/pdfDownloader';
 
-const supabaseUrl = 'https://dlmwlgnyehclzrryxepq.supabase.co';
+
+export default function page() {
+    const {id} = useParams()
+     useEffect(() => {
+        fetchReportData()
+     },[id])
+
+     const [reportData,setReportData] = useState<any[]>([])
+
+     async function fetchReportData() {
+        
+        let { data, error } = await supabase
+        .from('gp_reports')
+        .select("*")
+
+        // Filters
+        .eq('report_id', id)
+
+        if (data) {
+            setReportData(data)
+        }
+
+     }
+
+     console.log(reportData);
+     
+
+    const supabaseUrl = 'https://dlmwlgnyehclzrryxepq.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsbXdsZ255ZWhjbHpycnl4ZXBxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcyNzQ0OTQ0OCwiZXhwIjoyMDQzMDI1NDQ4fQ.b4plF-vw8ZJ5g-E84LWwUMF5OEzE-NBuG-9sI4sw8BE';
 const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey);
 
-interface GpReport {
-    frame_timeline: any; // Replace 'any' with the actual type if known
-    summary: {
-      foreign_key: string;
-    };
-  }
 const pieChartData = [
     { name: 'Safe', value: 60 },
     { name: 'Questionable', value: 25 },
@@ -38,13 +63,11 @@ const pieChartData = [
 
 const COLORS = ['#10B981', '#FBBF24', '#EF4444']
 
-let score = 72
-let framesProcessed = 30
+const score = reportData.length > 0 ? <>{reportData[0].score*10}%</> : null;
+const framesProcessed = reportData.length > 0 && reportData[0].frame_timeline === null? <>asdas</> : null;
 const summary = "text that you want to be in the pdf" 
-
-export default function DashboardAnalysis() {
-    return (
-        <div className="relative">
+  return (
+    <div className="relative">
         <div className="inset-0 min-h-full bg-fixed bg-gradient-to-b from-gray-900   to-red-800 text-gray-100 p-8">
             <div className=" max-w-7xl mx-auto">
                 <h1 className="text-3xl font-bold mb-8">Content Analysis Dashboard</h1>
@@ -56,7 +79,7 @@ export default function DashboardAnalysis() {
                         </CardHeader>
                         <CardContent>
                             <div className="text-5xl font-bold mb-2 text-gray-100">{score}</div>
-                            <Progress value={score} className="h-2 mb-2 bg-gray-500" />
+                            <Progress value = {score} className="h-2 mb-2 bg-gray-500" />
                             <p className="text-sm text-gray-400">Moderate risk detected</p>
                         </CardContent>
                     </Card>
@@ -75,7 +98,8 @@ export default function DashboardAnalysis() {
 
                 <div className="py-16 flex flex-1 justify-evenly space-x-[5rem] ">
                     <div className=" flex gap-8 w-1/2">
-                        <Card className="px-6 shadow-md bg-gray-950 border-white border-2 flex-1  ">
+                    { reportData.length > 0 && reportData[0].frame_timeline !== null && 
+                       <Card className="px-6 shadow-md bg-gray-950 border-white border-2 flex-1  ">
                             <CardHeader className="space-y-0 pb-0 text-gray-800">
                                 <CardDescription >Total number of frames </CardDescription>
                                 <CardTitle className=" flex items-baseline gap-1 text-m tabular-nums text-gray-100">
@@ -93,8 +117,8 @@ export default function DashboardAnalysis() {
                                 >
                                     <AreaChart
                                          accessibilityLayer
-                                         data={Array.from({ length: 11 }, (_, i) => ({
-                                             value: (i / 10),  
+                                         data={Array.from({ length: reportData[0].frame_timeline.length }, (_, i) => ({
+                                             value: (reportData[0].frame_timeline[i].score ),  
                                              frames: i,     
                                          }))}
                                         margin={{ left: 0, right: 0, top: 0, bottom: 0 }}
@@ -130,7 +154,9 @@ export default function DashboardAnalysis() {
                                     </AreaChart>
                                 </ChartContainer>
                             </CardContent>
-                        </Card>
+                        </Card> 
+                    }
+                        
                     </div>
 
                     <Card className="bg-gray-950 shadow-md flex gap-8 w-1/2 border-white border-2">
@@ -268,5 +294,6 @@ export default function DashboardAnalysis() {
             </div>
         </div >
         </div>
-    )
+    
+  )
 }
