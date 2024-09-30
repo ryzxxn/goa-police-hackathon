@@ -68,19 +68,23 @@ export default function Page() {
                         <div className='flex justify-between'>
                             <div>
                                 <h1 className="text-xl font-bold">Overall Safety Score</h1>
-                                <div className="text-5xl font-bold mb-2">{score}%</div>
+                                {score !== null && (
+                                    <div className="text-5xl font-bold mb-2">{score}%</div>
+                                )}
                             </div>
                             <div className='text-red-500 font-extrabold text-[3rem]'>
                                 RADWATCH
                             </div>
                         </div>
   
-                        <div className="relative w-full h-4 bg-black rounded">
-                            <div
-                                className="absolute h-full bg-red-500 rounded"
-                                style={{ width: `${score}%` }}
-                            ></div>
-                        </div>
+                        {score !== null && (
+                            <div className="relative w-full h-4 bg-black rounded">
+                                <div
+                                    className="absolute h-full bg-red-500 rounded"
+                                    style={{ width: `${score}%` }}
+                                ></div>
+                            </div>
+                        )}
                         <p className={`text-sm ${score < 40 ? 'text-green-500' : score < 70 ? 'text-yellow-500' : 'text-red-500'}`}>
                             {threatLevel} Detected
                         </p>
@@ -89,38 +93,46 @@ export default function Page() {
                     {reportData[0].type !== "text" && (
                         <div className="p-4 flex flex-1 w-full">
                             <div className="flex flex-1 flex-col">
-                                <h2 className="text-xl font-bold">Frame Count</h2>
-                                <p>Total Frames: {frameCount}</p>
+                                {frameCount > 0 && (
+                                    <>
+                                        <h2 className="text-xl font-bold">Frame Count</h2>
+                                        <p>Total Frames: {frameCount}</p>
+                                    </>
+                                )}
                             </div>
 
-                            <div className='flex flex-1 flex-col'>
-                                <h2 className="text-xl font-bold">Frame Analysis</h2>
-                                <AreaChart
-                                    width={600}
-                                    height={300}
-                                    data={chartData}
-                                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                                >
-                                    <XAxis dataKey="frame" />
-                                    <YAxis 
-                                        domain={[0, 'dataMax']}
-                                        ticks={[0,1,2,3,4,5,6,7,8,9,10]} // 10 ticks from 0 to 100
-                                    />
-                                    <Area
-                                        type="monotone"
-                                        dataKey="score"
-                                        stroke="#ff0000"
-                                        fill="#ff0000"
-                                        fillOpacity={0.3}
-                                    />
-                                </AreaChart>
-                            </div>
+                            {chartData.length > 0 && (
+                                <div className='flex flex-1 flex-col'>
+                                    <h2 className="text-xl font-bold">Frame Analysis</h2>
+                                    <AreaChart
+                                        width={600}
+                                        height={300}
+                                        data={chartData}
+                                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                                    >
+                                        <XAxis dataKey="frame" />
+                                        <YAxis 
+                                            domain={[0, 'dataMax']}
+                                            ticks={[0,1,2,3,4,5,6,7,8,9,10]} // 10 ticks from 0 to 10
+                                        />
+                                        <Area
+                                            type="monotone"
+                                            dataKey="score"
+                                            stroke="#ff0000"
+                                            fill="#ff0000"
+                                            fillOpacity={0.3}
+                                        />
+                                    </AreaChart>
+                                </div>
+                            )}
                         </div>
                     )}
 
                     <div>
                         <h1 className='font-bold'>Summary</h1>
-                        <p className='font-mono'>{reportData[0].summary}</p>
+                        {reportData[0].summary && (
+                            <p className='font-mono'>{reportData[0].summary}</p>
+                        )}
                     </div>
                 </>
             ) : (
