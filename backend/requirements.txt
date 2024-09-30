@@ -1,0 +1,14 @@
+Flask
+Flask-Cors
+yt-dlp
+moviepy
+chromadb
+langchain-community
+Pillow
+speechrecognition
+numpy
+opencv-python
+requests
+transformers
+supabase
+ollama
